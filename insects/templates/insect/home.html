@@ -1,0 +1,342 @@
+{% extends 'base_layout.html' %}
+
+{% block title %}Cơ sở dữ liệu côn trùng{% endblock %}
+
+{% block content %}
+<div class="header">
+  <h1>Cơ sở dữ liệu côn trùng</h1>
+</div>
+
+<!-- Photo Grid -->
+<div class="row">
+  <input type="hidden" id="insect_slug" value="{{ slug }}">
+  {% csrf_token %}
+  <div class="column" id="column1">
+    {% for rects in rects1 %}
+    {% for rect in rects.rects %}
+    {% if forloop.first %}
+    <div class="component">
+      <svg viewbox="0 0 {{ rect.image.image.width }} {{ rect.image.image.height }}" id="{{ rect.image.pk }}">
+        <image xlink:href="{{ rect.image.image.url }}" loading="lazy"
+          onclick='image_models_popup("{{ rect.image.pk }}")' alt="{{rect.image.insect.snippet}}" />
+        {% endif %}
+        <rect class="rect" style="display: block;" vector-effect="non-scaling-stroke" stroke-alignment="inner"
+          x="{{ rect.x }}" y="{{ rect.y }}" width="{{ rect.width }}" height="{{ rect.height }}" category="/m/015p6"
+          id="img3_box0" fill="none" stroke-width="1.5pt" stroke="#FFFF00" visibility="visible"></rect>
+
+      </svg>
+      {% if forloop.last %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+  </div>
+  <div class="column" id="column2">
+    {% for rects in rects2 %}
+    {% for rect in rects.rects %}
+    {% if forloop.first %}
+    <div class="component">
+      <svg viewbox="0 0 {{ rect.image.image.width }} {{ rect.image.image.height }}" id="{{ rect.image.pk }}">
+        <image xlink:href="{{ rect.image.image.url }}" loading="lazy"
+          onclick='image_models_popup("{{ rect.image.pk }}")' alt="{{rect.image.insect.snippet}}" />
+        {% endif %}
+        <rect class="rect" style="display: block;" vector-effect="non-scaling-stroke" stroke-alignment="inner"
+          x="{{ rect.x }}" y="{{ rect.y }}" width="{{ rect.width }}" height="{{ rect.height }}" category="/m/015p6"
+          id="img3_box0" fill="none" stroke-width="1.5pt" stroke="#FFFF00" visibility="visible"></rect>
+
+      </svg>
+      {% if forloop.last %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+  </div>
+  <div class="column" id="column3">
+    {% for rects in rects3 %}
+    {% for rect in rects.rects %}
+    {% if forloop.first %}
+    <div class="component">
+      <svg viewbox="0 0 {{ rect.image.image.width }} {{ rect.image.image.height }}" id="{{ rect.image.pk }}">
+        <image xlink:href="{{ rect.image.image.url }}" loading="lazy"
+          onclick='image_models_popup("{{ rect.image.pk }}")' alt="{{rect.image.insect.snippet}}" />
+        {% endif %}
+        <rect class="rect" style="display: block;" vector-effect="non-scaling-stroke" stroke-alignment="inner"
+          x="{{ rect.x }}" y="{{ rect.y }}" width="{{ rect.width }}" height="{{ rect.height }}" category="/m/015p6"
+          id="img3_box0" fill="none" stroke-width="1.5pt" stroke="#FFFF00" visibility="visible"></rect>
+
+      </svg>
+      {% if forloop.last %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+  </div>
+  <div class="column" id="column4">
+    {% for rects in rects4 %}
+    {% for rect in rects.rects %}
+    {% if forloop.first %}
+    <div class="component">
+      <svg viewbox="0 0 {{ rect.image.image.width }} {{ rect.image.image.height }}" id="{{ rect.image.pk }}">
+        <image xlink:href="{{ rect.image.image.url }}" loading="lazy"
+          onclick='image_models_popup("{{ rect.image.pk }}")' alt="{{rect.image.insect.snippet}}" />
+        {% endif %}
+        <rect class="rect" style="display: block;" vector-effect="non-scaling-stroke" stroke-alignment="inner"
+          x="{{ rect.x }}" y="{{ rect.y }}" width="{{ rect.width }}" height="{{ rect.height }}" category="/m/015p6"
+          id="img3_box0" fill="none" stroke-width="1.5pt" stroke="#FFFF00" visibility="visible"></rect>
+
+      </svg>
+      {% if forloop.last %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+  </div>
+  <div class="column" id="column5">
+    {% for rects in rects5 %}
+    {% for rect in rects.rects %}
+    {% if forloop.first %}
+    <div class="component">
+      <svg viewbox="0 0 {{ rect.image.image.width }} {{ rect.image.image.height }}" id="{{ rect.image.pk }}">
+        <image xlink:href="{{ rect.image.image.url }}" loading="lazy"
+          onclick='image_models_popup("{{ rect.image.pk }}")' alt="{{rect.image.insect.snippet}}" />
+        {% endif %}
+        <rect class="rect" style="display: block;" vector-effect="non-scaling-stroke" stroke-alignment="inner"
+          x="{{ rect.x }}" y="{{ rect.y }}" width="{{ rect.width }}" height="{{ rect.height }}" category="/m/015p6"
+          id="img3_box0" fill="none" stroke-width="1.5pt" stroke="#FFFF00" visibility="visible"></rect>
+
+      </svg>
+      {% if forloop.last %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+  </div>
+</div>
+<!-- The Modal -->
+<div id="myModal" class="modal">
+  <span class="close" id="close">&times;</span>
+  <img class="modal-content" id="img01">
+  <div id="caption"></div>
+  <button class="btn btn-success" id="modal-button" onclick="redirect()">More</button>
+</div>
+{% endblock %}
+
+{% block script %}
+
+<script>
+  let img_index = 0
+  let __url__ = ""
+  const redirect = () => {
+    window.location.href = __url__
+  }
+
+  const loadMore = () => {
+    img_index += 100
+    console.log(img_index)
+    console.log("load more");
+    insect_slug = document.getElementById("insect_slug").value
+    console.log(insect_slug)
+    $(window).bind("scroll");
+
+    let req = new XMLHttpRequest();
+    req.open("POST", "/get-insect-images", null)
+    let fD = new FormData()
+    fD.append('slug', insect_slug)
+    fD.append('index', img_index)
+    fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+    req.send(fD)
+    let html = ""
+    data = JSON.parse(req.responseText)
+
+    for (let i = 0; i < data.rects1.length; i++) {
+      html += `<div class="component">
+                    <svg viewbox="0 0 `+ data.rects1[i].rects[0].img_w + ` ` + data.rects1[i].rects[0].img_h + `" id="` + data.rects1[i].rects[0].pk + `" >
+                      <image xlink:href="`+ data.rects1[i].rects[0].img + `" loading="lazy" onclick='image_models_popup("` + data.rects1[i].rects[0].pk + `")' alt="` + data.rects1[i].rects[0].snippet + `" />`
+      for (let j = 0; j < data.rects1[i].rects.length; j++) {
+        html += `<rect
+                        class="rect"
+                        style="display: block;"
+                        vector-effect="non-scaling-stroke"
+                        stroke-alignment="inner"
+                        x="`+ data.rects1[i].rects[j].x + `"
+                        y="`+ data.rects1[i].rects[j].y + `"
+                        width="`+ data.rects1[i].rects[j].width + `"
+                        height="`+ data.rects1[i].rects[j].height + `"
+                        category="/m/015p6"
+                        id="img3_box0"
+                        fill="none"
+                        stroke-width="1.5pt"
+                        stroke="#FFFF00"
+                        visibility="visible"
+                      ></rect>`
+      }
+
+      html += `</svg>
+                  </div>`
+
+    }
+    $("#column1").append(html);
+
+    html = ""
+
+    for (let i = 0; i < data.rects2.length; i++) {
+      html += `<div class="component">
+                    <svg viewbox="0 0 `+ data.rects2[i].rects[0].img_w + ` ` + data.rects2[i].rects[0].img_h + `" id="` + data.rects2[i].rects[0].pk + `" >
+                      <image xlink:href="`+ data.rects2[i].rects[0].img + `" loading="lazy" onclick='image_models_popup("` + data.rects2[i].rects[0].pk + `")' alt="` + data.rects2[i].rects[0].snippet + `" />`
+      for (let j = 0; j < data.rects2[i].rects.length; j++) {
+        html += `<rect
+                        class="rect"
+                        style="display: block;"
+                        vector-effect="non-scaling-stroke"
+                        stroke-alignment="inner"
+                        x="`+ data.rects2[i].rects[j].x + `"
+                        y="`+ data.rects2[i].rects[j].y + `"
+                        width="`+ data.rects2[i].rects[j].width + `"
+                        height="`+ data.rects2[i].rects[j].height + `"
+                        category="/m/015p6"
+                        id="img3_box0"
+                        fill="none"
+                        stroke-width="1.5pt"
+                        stroke="#FFFF00"
+                        visibility="visible"
+                      ></rect>`
+      }
+
+      html += `</svg>
+                  </div>`
+
+    }
+
+    $("#column2").append(html);
+
+    html = ""
+
+    for (let i = 0; i < data.rects3.length; i++) {
+      html += `<div class="component">
+                    <svg viewbox="0 0 `+ data.rects3[i].rects[0].img_w + ` ` + data.rects3[i].rects[0].img_h + `" id="` + data.rects3[i].rects[0].pk + `" >
+                      <image xlink:href="`+ data.rects3[i].rects[0].img + `" loading="lazy" onclick='image_models_popup("` + data.rects3[i].rects[0].pk + `")' alt="` + data.rects3[i].rects[0].snippet + `" />`
+      for (let j = 0; j < data.rects3[i].rects.length; j++) {
+        html += `<rect
+                        class="rect"
+                        style="display: block;"
+                        vector-effect="non-scaling-stroke"
+                        stroke-alignment="inner"
+                        x="`+ data.rects3[i].rects[j].x + `"
+                        y="`+ data.rects3[i].rects[j].y + `"
+                        width="`+ data.rects3[i].rects[j].width + `"
+                        height="`+ data.rects3[i].rects[j].height + `"
+                        category="/m/015p6"
+                        id="img3_box0"
+                        fill="none"
+                        stroke-width="1.5pt"
+                        stroke="#FFFF00"
+                        visibility="visible"
+                      ></rect>`
+      }
+
+      html += `</svg>
+                  </div>`
+
+    }
+    $("#column3").append(html);
+
+    html = ""
+
+    for (let i = 0; i < data.rects4.length; i++) {
+      html += `<div class="component">
+                    <svg viewbox="0 0 `+ data.rects4[i].rects[0].img_w + ` ` + data.rects4[i].rects[0].img_h + `" id="` + data.rects4[i].rects[0].pk + `" >
+                      <image xlink:href="`+ data.rects4[i].rects[0].img + `" loading="lazy" onclick='image_models_popup("` + data.rects4[i].rects[0].pk + `")' alt="` + data.rects4[i].rects[0].snippet + `" />`
+      for (let j = 0; j < data.rects4[i].rects.length; j++) {
+        html += `<rect
+                        class="rect"
+                        style="display: block;"
+                        vector-effect="non-scaling-stroke"
+                        stroke-alignment="inner"
+                        x="`+ data.rects4[i].rects[j].x + `"
+                        y="`+ data.rects4[i].rects[j].y + `"
+                        width="`+ data.rects4[i].rects[j].width + `"
+                        height="`+ data.rects4[i].rects[j].height + `"
+                        category="/m/015p6"
+                        id="img3_box0"
+                        fill="none"
+                        stroke-width="1.5pt"
+                        stroke="#FFFF00"
+                        visibility="visible"
+                      ></rect>`
+      }
+
+      html += `</svg>
+                  </div>`
+
+    }
+
+    $("#column4").append(html);
+
+    html = ""
+
+    for (let i = 0; i < data.rects5.length; i++) {
+      html += `<div class="component">
+                    <svg viewbox="0 0 `+ data.rects5[i].rects[0].img_w + ` ` + data.rects5[i].rects[0].img_h + `" id="` + data.rects5[i].rects[0].pk + `" >
+                      <image xlink:href="`+ data.rects5[i].rects[0].img + `" loading="lazy" onclick='image_models_popup("` + data.rects5[i].rects[0].pk + `")' alt="` + data.rects5[i].rects[0].snippet + `" />`
+      for (let j = 0; j < data.rects5[i].rects.length; j++) {
+        html += `<rect
+                        class="rect"
+                        style="display: block;"
+                        vector-effect="non-scaling-stroke"
+                        stroke-alignment="inner"
+                        x="`+ data.rects5[i].rects[j].x + `"
+                        y="`+ data.rects5[i].rects[j].y + `"
+                        width="`+ data.rects5[i].rects[j].width + `"
+                        height="`+ data.rects5[i].rects[j].height + `"
+                        category="/m/015p6"
+                        id="img3_box0"
+                        fill="none"
+                        stroke-width="1.5pt"
+                        stroke="#FFFF00"
+                        visibility="visible"
+                      ></rect>`
+      }
+
+      html += `</svg>
+                  </div>`
+
+    }
+
+    $("#column5").append(html);
+  };
+
+  $(window).scroll(function () {
+    if (
+      $(window).scrollTop() + $(window).height() >
+      $(document).height() - 100
+    ) {
+      loadMore();
+    }
+  });
+
+  const image_models_popup = (id) => {
+    var modal = document.getElementById("myModal");
+
+    // Get the image and insert it inside the modal - use its "alt" text as a caption
+    var svg = document.getElementById(id);
+    __url__ = "/detail/" + document.getElementById("insect_slug").value
+    var img = svg.getElementsByTagName('image')[0];
+    var url = img.getAttribute('xlink:href');
+    var cap = img.getAttribute('alt');
+    var modalImg = document.getElementById("img01");
+    var captionText = document.getElementById("caption");
+    modal.style.display = "block";
+    modalImg.src = url;
+    captionText.innerHTML = cap;
+  }
+
+  var span = document.getElementById("close");
+
+  // When the user clicks on <span> (x), close the modal
+  span.onclick = function () {
+    var modal = document.getElementById("myModal");
+    modal.style.display = "none";
+  }
+</script>
+
+{% endblock %}

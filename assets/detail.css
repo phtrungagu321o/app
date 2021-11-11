@@ -1,0 +1,126 @@
+.detail_column {
+  -ms-flex: 90%; /* IE10 */
+  flex: 90%;
+  max-width: 90%;
+  padding: 0 4px;
+  margin: 0 5% 0 5%;
+  background-color: cornsilk;
+}
+
+.detail_title h1 {
+  text-align: center;
+  border-bottom: thin solid gray;
+  padding: 15px 15px 15px 15px;
+  margin: 0px 0px 0px 0px;
+  font-weight: bold;
+  color: coral;
+  text-shadow: 2px 2px 5px darkgray;
+}
+
+.detail_content {
+  display: -ms-flexbox; /* IE10 */
+  display: flex;
+  -ms-flex-wrap: wrap; /* IE10 */
+  flex-wrap: wrap;
+  padding: 15px 15px 15px 15px;
+}
+
+.detail_content .detail_left {
+  -ms-flex: 25%; /* IE10 */
+  flex: 25%;
+  max-width: 25%;
+  padding: 0 4px;
+}
+
+.detail_content .detail_right {
+  -ms-flex: 75%; /* IE10 */
+  flex: 75%;
+  max-width: 75%;
+  padding: 0 4px;
+}
+
+.detail_table {
+  width: 100%;
+  background-color: wheat;
+  padding: 5px 5px 5px 5px;
+}
+
+.detail_table_title {
+  border-bottom: thick solid cornsilk;
+  border-top: thick solid cornsilk;
+}
+
+.detail_table_title {
+  padding: 10px 0 10px 0;
+  text-align: center;
+}
+
+.detail_table td {
+  font-size: 12pt;
+  padding: 0px 15px 0px 15px;
+}
+
+.detail_left img {
+  vertical-align: middle;
+  margin: 5% 5% 5% 5%;
+  width: 90%;
+}
+
+.detail_left td a {
+  font-weight: bold;
+}
+
+.detail_right div {
+  margin: 15px 15px 15px 15px;
+  text-align: justify;
+}
+
+.detail_right h3 {
+  text-shadow: 2px 2px 3px darkgray;
+  border-bottom: thin solid darkgray;
+}
+
+.detail_img {
+  -ms-flex: 100%; /* IE10 */
+  flex: 100%;
+  max-width: 100%;
+  padding: 0 4px;
+}
+
+.detail_images {
+  display: -ms-flexbox; /* IE10 */
+  display: flex;
+  -ms-flex-wrap: wrap; /* IE10 */
+  flex-wrap: wrap;
+  border-bottom: thin solid darkgray;
+}
+
+.detail_image_column {
+  -ms-flex: 18%; /* IE10 */
+  flex: 18%;
+  max-width: 18%;
+  margin: 1% 1% 1% 1%;
+}
+
+.detail_image_column image {
+  vertical-align: middle;
+  margin: 2px 2px 2px 2px;
+  width: 100%;
+}
+
+@media print {
+  .print {
+    display: none !important;
+  }
+}
+
+.button {
+  margin-top: 10px;
+  border-radius: 4px;
+  background-color: rgb(189, 52, 52, 0.9);
+  color: whitesmoke;
+  border: none;
+}
+
+
+/* new */

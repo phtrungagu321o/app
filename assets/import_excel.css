@@ -1,0 +1,12 @@
+.result {
+    margin-top: 10px;
+    padding: 15px 15px 15px 15px;
+    border: thin solid salmon;
+    border-radius: 2px;
+    width: 99%;
+}
+
+.alert {
+    position: static !important;
+    width: 100%;
+}

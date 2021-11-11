@@ -1,0 +1,365 @@
+{% extends 'base_layout.html' %}
+
+
+{% block title %}Crawler{% endblock %}
+{% block link %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'crawl.css' %}">
+{% endblock %}
+{% block content %}
+
+<div>
+    <form action="">
+        {% csrf_token %}
+        <div class="form-title">
+            <h2>Import Images</h2>
+        </div>
+        <br />
+        <label for="Insect">Chọn côn trùng</label>
+        <select name="Insect" id="Insect">
+
+        </select>
+        <label for="count">Số lượng</label>
+        <input type="text" id="count" value="1000">
+        <label for=""></label>
+        <input type="button" value="Cào" onclick="crawl()">
+        <input type="button" value="Kiểm tra" onclick="compare(0)">
+        <input type="button" value="Upload" id="btn_upload" onclick="DownloadImage(0)">
+        <br>
+        <div class="process"></div>
+    </form>
+    <br />
+    <label for="all">Chon tat ca</label>
+    <input type="checkbox" name="all" id="all" onchange="checkAll()">
+    <div class="result" id="res">
+
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block script %}
+
+<script>
+
+
+    let current_urls = []
+    let ids = []
+
+    const checkAll = () => {
+        let key = document.getElementById("all")
+        let val = false
+        if (key.checked)
+            val = true
+        else
+            ids = []
+        for (let i = 0; i < current_urls.length; i++) {
+            document.getElementById(i).checked = val
+            if (val == true)
+                ids.push(i)
+        }
+    }
+
+    const getInsect = () => {
+        let req = new XMLHttpRequest()
+        req.open('get', '/get_all_insect', false)
+        req.send(null)
+        all_insect = JSON.parse(req.responseText);
+        console.log(all_insect)
+        $("#Insect").html(display_insect())
+    }
+
+    const display_insect = () => {
+        let str = ""
+        for (let i = 0; i < all_insect.length; i++) {
+            //console.log(current_insect[i])
+
+            str += `<option value=` + all_insect[i].fields.slug + `>` + all_insect[i].pk + `</option>`
+        }
+        return str;
+    }
+
+    getInsect();
+
+    const crawl = () => {
+        let input = document.getElementById("Insect").value
+        let fD = new FormData();
+        fD.append('crawl_input', input)
+        fD.append('count', document.getElementById("count").value)
+        fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+        $.ajax({
+            url: '',
+            type: 'POST',
+            data: fD,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                let result = JSON.parse(data)
+
+                //$("#crawl_img").html('<img src="'+result.crawl[0]+'" alt=""><br/>')
+                if (result.message == undefined) {
+                    console.log(result.crawl[0])
+                    let str = ''
+                    var img = document.createElement("img");
+                    img.src = result.crawl[0]
+                    document.getElementById("crawl_img").appendChild(img)
+                    let resimg = []
+                    for (let i = 0; i < result.file.length; i++)
+                        str += '<h2>Score: ' + result.score[i] + '</h2><br><img src="' + result.file[i] + '" alt=""><br/>'
+
+                    document.getElementById("resultimg").innerHTML = str
+                } else {
+                    alert(result.message);
+                    const checking = setInterval(() => {
+                        if (current_urls.length < $("#count").val()) {
+                            CheckThread();
+                        } else {
+                            alert("Xong")
+                            clearInterval(checking)
+                        }
+                    }, 3000);
+                }
+            }
+        });
+    }
+
+    const CheckThread = () => {
+        $.ajax({
+            url: '/get-crawled-urls/',
+            type: 'GET',
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: (data) => {
+                let result = JSON.parse(data)
+                console.log(result)
+                if (current_urls.length < result.urls.length) {
+                    current_urls = result.urls
+                    document.getElementById("res").innerHTML = ""
+                    $(".process").html("crawl " + current_urls.length + "/" + $("#count").val())
+                    for (let i = 0; i < result.urls.length; i++) {
+
+                        let frame_success = document.createElement("div")
+                        frame_success.className = "frame-success"
+
+                        let img = document.createElement("img");
+                        let div = document.createElement("div");
+                        let input = document.createElement("input");
+                        input.type = "checkbox"
+                        input.onclick = () => {
+                            if (document.getElementById(i).checked) {
+                                ids.push(i);
+                            } else {
+                                let index = ids.indexOf(i)
+                                if (index > -1) {
+                                    ids.splice(index, 1)
+                                }
+                            }
+
+                            console.log(ids)
+                            // if (ids.length > 0) {
+                            //     $(".btn_upload").prop("disabled", false)
+                            // } else {
+                            //     $(".btn_upload").prop("disabled", true)
+                            // }
+                        }
+                        input.id = i
+                        div.className = "checkbox-result"
+                        div.appendChild(input)
+                        img.src = result.urls[i]
+                        frame_success.appendChild(img)
+                        frame_success.appendChild(div)
+
+                        document.getElementById("res").appendChild(frame_success)
+
+                    }
+                }
+            }
+        })
+    }
+
+    ids = []
+    const compare = (current_index) => {
+        console.log(current_index)
+        document.getElementById("all").checked = false
+        if (current_index == 0) {
+            document.getElementById("res").innerHTML = ""
+            console.log(current_index, ids.length)
+        }
+
+        let fD = new FormData();
+        fD.append('image', current_urls[ids[current_index]])
+        console.log(current_urls[ids[current_index]])
+        fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+        $.ajax({
+            url: '/compare-img/',
+            type: 'POST',
+            data: fD,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                console.log(data)
+                let datas = JSON.parse(data)
+
+                if (datas.file.length == 0) {
+                    console.log(datas.crawl[0])
+                    let frame_success = document.createElement("div")
+                    frame_success.className = "frame-success"
+
+                    let img = document.createElement("img");
+                    let div = document.createElement("div");
+                    let input = document.createElement("input");
+                    input.type = "checkbox"
+                    input.id = current_index
+                    input.onclick = () => {
+                        if (document.getElementById(current_index).checked) {
+                            ids.push(current_index);
+                        } else {
+                            let index = ids.indexOf(current_index)
+                            if (index > -1) {
+                                ids.splice(index, 1)
+                            }
+                        }
+
+                        console.log(ids)
+                        // if (ids.length > 0) {
+                        //     $(".btn_upload").prop("disabled", false)
+                        // } else {
+                        //     $(".btn_upload").prop("disabled", true)
+                        // }
+                    }
+                    div.className = "checkbox-result"
+                    div.appendChild(input)
+                    img.src = datas.crawl[0]
+                    frame_success.appendChild(img)
+                    frame_success.appendChild(div)
+                    console.log(frame_success)
+                    document.getElementById("res").appendChild(frame_success)
+
+                } else {
+                    for (let j = 0; j < datas.file.length; j++) {
+                        let frame = document.createElement("div")
+                        frame.className = "frame"
+
+                        let img1 = document.createElement("img")
+                        img1.src = datas.crawl[0]
+
+                        let img2 = document.createElement("img")
+                        img2.src = datas.file[j]
+
+                        let output = document.createElement("div")
+                        output.className = "output"
+                        output.innerHTML = (datas.score[j] * 100) + " %"
+
+                        let checkbox_res = document.createElement("div")
+                        checkbox_res.className = "checkbox-result"
+
+                        let input = document.createElement("input")
+                        input.type = "checkbox"
+                        input.id = current_index
+                        input.onclick = () => {
+                            if (document.getElementById(current_index).checked) {
+                                ids.push(current_index);
+                            } else {
+                                let index = ids.indexOf(current_index)
+                                if (index > -1) {
+                                    ids.splice(index, 1)
+                                }
+                            }
+
+                            console.log(ids)
+                            // if (ids.length > 0) {
+                            //     $(".btn_upload").prop("disabled", false)
+                            // } else {
+                            //     $(".btn_upload").prop("disabled", true)
+                            // }
+                        }
+
+                        frame.appendChild(img1)
+                        frame.appendChild(img2)
+                        frame.appendChild(output)
+                        checkbox_res.appendChild(input)
+                        frame.appendChild(checkbox_res)
+                        document.getElementById("res").appendChild(frame)
+                    }
+                }
+
+
+                $(".process").html("comparing " + (current_index + 1) + "/" + ids.length)
+                if (current_index + 1 < ids.length) {
+                    compare(current_index + 1)
+                } else {
+                    alert("Hoan thanh");
+                    ids = []
+                    document.getElementById("all").checked = false
+                }
+            }
+        });
+    }
+    current_send_index = 0
+
+    const DownloadImage = (index) => {
+        let fD = new FormData();
+        //$('#btn_upload').prop('disabled', true)
+        console.log(current_urls[ids[index]])
+        fD.append('url', current_urls[ids[index]])
+        fD.append('insect', $('#Insect').val())
+        fD.append('index', index)
+        fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+        $.ajax({
+            url: '/download-new-img/',
+            type: 'POST',
+            data: fD,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                console.log(data)
+
+                if (index + 1 < ids.length) {
+                    DownloadImage(index + 1)
+                } else {
+                    alert("Hoan thanh");
+                    ids = []
+                    document.getElementById("all").checked = false
+                    document.location.href = ''
+                }
+
+            }
+        });
+    }
+    // const upload = () => {
+    //     let fD = new FormData();
+    //     $('#btn_upload').prop('disabled', true)
+    //     fD.append('image', img_files[rects[current_send_index].index])
+    //     fD.append('rects', rects[current_send_index].rect)
+    //     fD.append('insect', $('#Insect').val())
+    //     fD.append('subset', $('#subset').val())
+    //     fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+    //     $.ajax({
+    //         url: '/import_data/',
+    //         type: 'POST',
+    //         data: fD,
+    //         cache: false,
+    //         processData: false,
+    //         contentType: false,
+    //         success: function (data) {
+    //             console.log(data)
+
+    //             current_send_index++;
+    //             if (current_send_index < labelCount) {
+    //                 document.getElementById("processing").innerHTML = "Uploading... " + (current_send_index + 1) + "/" + flg
+
+    //                 sendData(current_send_index)
+    //             } else {
+    //                 alert("Them anh thanh cong");
+    //             }
+    //         }
+    //     });
+    // }
+</script>
+
+{% endblock %}

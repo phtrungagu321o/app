@@ -1,0 +1,569 @@
+{% extends 'base_layout.html' %}
+
+{% block link %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'import_data.css' %}">
+{% endblock %}
+{% block title %}Import Data{% endblock %}
+
+{% block content %}
+
+
+<form action="" id="form" method="post" enctype="multipart/form-data">
+    <div class="form-title">
+        <h2>Nhập ảnh</h2>
+    </div>
+    {% csrf_token %}
+
+    <label for="import_type">Định dạng labels</label>
+    <select name="import_type" id="import_type" onchange="selectOnchange()">
+        <option value="yolo">Yolo</option>
+        <option value="pascal_voc">Pascal VOC</option>
+    </select>
+    <br>
+    <label for="subset">Loại</label>
+    <select name="subset" id="subset" onchange="selectOnchange()">
+        <option value="train">Train</option>
+        <option value="validate">Validate</option>
+        <option value="test">Test</option>
+    </select>
+    <br>
+    <label for="Insect">Chọn côn trùng</label>
+    <select name="Insect" id="Insect">
+
+    </select>
+    <label for="filepicker">Chọn ảnh</label>
+    <input type="file" id="filepicker" name="fileList" accept="image/*" files multiple />
+    <label for="filepicker2">Chọn labels</label>
+    <input type="file" id="filepicker2" disabled name="fileList" accept=".txt" files multiple />
+    <label for="btn_upload">Upload</label>
+    <input id="btn_upload" disabled type="button" value="Upload" onclick="sendDataToServer()">
+    <br>
+    <div id="processing"></div>
+</form>
+<ul id="listing">
+</ul>
+
+
+{% endblock %}
+{% block script %}
+<script>
+
+    let disable = true;
+    let imgCount = 0;
+    let labelCount = 0;
+    let currentInsect = []
+    let index_img = 0;
+
+    let img_files, rects_files
+    let data_json = []
+    let final_obj
+    let current_index = 0
+    let img_flag = 0
+    let rect_flag = 0
+    let flg = 0
+    let he_so = 0
+    let rects
+
+    document.getElementById("filepicker").addEventListener("change", function (event) {
+        images_array = []
+        //let files = document.getElementById("filepicker").files
+        img_files = document.getElementById("filepicker").files;
+        imgCount = img_files.length;
+        changeButtonStatus();
+    });
+
+    document.getElementById("filepicker2").addEventListener("change", async function (event) {
+        rects_files = document.getElementById("filepicker2").files
+        labelCount = rects_files.length;
+        rects = []
+        reading_rect()
+        //reading_rect()
+    });
+
+    let str_ = "";
+
+    const preview = () => {
+        reading_rect()
+    }
+
+
+
+    const create_data_json = () => {
+        current_index = imgCount
+
+        for (let i = 0; i < current_index; i++) {
+            let reader = new FileReader();
+
+            reader.onload = (e) => {
+                data_json.push({ name: img_files[i].name.split('.').slice(0, -1).join('.') });
+
+                let data_tmp = find_data_json_by_name(reader.name)
+                let tmp = {}
+
+                tmp.file = reader.f
+                data_tmp.image = tmp;
+                reader = undefined;
+            }
+            reader.index = i
+            reader.f = img_files[i]
+            reader.name = img_files[i].name.split('.').slice(0, -1).join('.');
+            reader.readAsDataURL(img_files[i]);
+            console.log(i)
+        }
+
+        // let create_html = setInterval(() => {
+        //     console.log('interval');
+        //     console.log(img_flag);
+        //     if (img_flag == current_index)
+        //     {
+        //         reading_rect();
+        //         clearInterval(create_html);
+        //         console.log('clear interval');
+        //     }
+        // }, 1000)
+
+
+    }
+
+    const get_img_file_by_name = (name) => {
+        for (let i = 0; i < img_files.length; i++) {
+            if (img_files[i].name.split('.').slice(0, -1).join('.') == name)
+                return i
+        }
+        return null
+    }
+
+    const get_image_w_h = (index, callback) => {
+
+        let _URL = window.URL
+        img = new Image();
+        let objectUrl = _URL.createObjectURL(img_files[index]);
+        img.onload = function () {
+            callback(this.width, this.height)
+            img = undefined
+            _URL = undefined
+            objectUrl = undefined
+        };
+        img.src = objectUrl;
+
+
+    }
+
+    const check_exist = () => {
+        for (let i = 0; i < labelCount; i++) {
+            let img_index = get_img_file_by_name(img_files[i].name.split('.').slice(0, -1).join('.'))
+            if (img_index != null) {
+                flg++;
+            }
+        }
+    }
+
+    const reading_rect = () => {
+        $('#filepicker').prop('disabled', true)
+        $('#filepicker2').prop('disabled', true)
+        $('#import_type').prop('disabled', true)
+        check_exist()
+        for (let i = 0; i < labelCount; i++) {
+            let reader = new FileReader()
+            reader.onload = (e) => {
+                let str_tmp = e.target.result
+                let img_index = get_img_file_by_name(e.target.name)
+                if (img_index == null) {
+                    img_index = undefined
+                    return;
+                }
+                let tmp = {}
+                tmp.rect = []
+                str_tmp = str_tmp.split("\n");
+                for (let i = 0; i < str_tmp.length; i++) {
+                    let newText = str_tmp[i].split(" ");
+                    if (newText.length > 2)
+                        tmp.rect.push(newText)
+                }
+                tmp.index = img_index
+                let w_h = get_image_w_h(img_index, (w, h) => {
+                    let st = []
+
+                    for (let j = 0; j < tmp.rect.length; j++) {
+                        let len = tmp.rect[j].length
+                        st.push(import_type(tmp.rect[j][len - 4], tmp.rect[j][len - 3], tmp.rect[j][len - 2], tmp.rect[j][len - 1], w, h))
+                    }
+                    tmp.rect = st;
+                    rects.push(tmp)
+                    tmp = undefined
+                    rect_flag++;
+                })
+
+
+                if (true) {
+                    // let fD = new FormData();
+                    // fD.append('image', img)
+                    // fD.append('rects', tmp.rect)
+                    // fD.append('insect', $('#Insect').val())
+                    // fD.append('subset', $('#subset').val())
+                    // fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+                    // $.ajax({
+                    //     url: '',
+                    //     type: 'POST',
+                    //     data: fD,
+                    //     cache: false,
+                    //     processData: false,
+                    //     contentType: false,
+                    //     success: function (data) {
+                    //         $("#content").html(data);
+                    //         fD = undefined;
+                    //     }
+                    // });
+                }
+
+
+                reader = undefined;
+            }
+            reader.index = i;
+            reader.name = img_files[i].name.split('.').slice(0, -1).join('.');
+            reader.readAsText(rects_files[i])
+            document.getElementById("processing").innerHTML = "Creation reader rect files: " + i + "/" + flg
+        }
+        let create_html = setInterval(() => {
+            //console.log('interval');
+            console.log("read rect files", rect_flag, "/", flg);
+            document.getElementById("processing").innerHTML = "read rect files: " + rect_flag + "/" + flg
+            if (rect_flag == flg) {
+                console.log(rects);
+
+                clearInterval(create_html);
+
+                $('#btn_upload').prop('disabled', false)
+                console.log('clear interval');
+                //filter();
+                //create_svg();
+            }
+        }, 1000)
+
+    }
+
+    const check_current_index = () => {
+        if (current_index < imgCount) {
+            img_files = cut_arr(img_files, current_index)
+            he_so += current_index
+            data_json = []
+            imgCount -= current_index;
+            current_index = 0;
+            img_flag = 0;
+            rect_flag = 0;
+            alert('')
+            return;
+        } else {
+            return;
+        }
+    }
+
+    let current_send_index;
+
+    const sendDataToServer = () => {
+        current_send_index = 0
+
+        sendData(current_send_index)
+
+         for (let i = 0; i < data_json.length; i++) {
+             let reader = new FileReader();
+
+             let fD = new FormData();
+             fD.append('image', data_json[i].image.file)
+             fD.append('rects', data_json[i].rect.rect)
+             fD.append('insect', $('#Insect').val())
+             fD.append('subset', $('#subset').val())
+             fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+             $.ajax({
+                 url: '',
+                 type: 'POST',
+                 data: fD,
+                 cache: false,
+                 processData: false,
+                 contentType: false,
+                 success: function (data) {
+                     $("#content").html(data);
+                 }
+             });
+         }
+    }
+
+    const sendData = () => {
+        let fD = new FormData();
+        $('#btn_upload').prop('disabled', true)
+        fD.append('image', img_files[rects[current_send_index].index])
+        fD.append('rects', rects[current_send_index].rect)
+        fD.append('insect', $('#Insect').val())
+        fD.append('subset', $('#subset').val())
+        fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+        $.ajax({
+            url: '/import_data/',
+            type: 'POST',
+            data: fD,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                console.log(data)
+
+                current_send_index++;
+                if (current_send_index < labelCount) {
+                    document.getElementById("processing").innerHTML = "Uploading... " + (current_send_index + 1) + "/" + flg
+
+                    sendData(current_send_index)
+                } else {
+                    alert("Them anh thanh cong");
+                    window.location.href = ""
+                }
+            }
+        });
+    }
+
+    const filter = () => {
+        for (let i = 0; i < data_json.length; i++) {
+            if (data_json[i].rect == undefined) {
+                data_json.splice(i, 1);
+            }
+        }
+        $('#btn_upload').prop('disabled', false)
+        console.log("filter done")
+    }
+
+    const create_svg = () => {
+        let output = document.getElementById("listing")
+        for (let i = 0; i < 500; i++) {
+            let reader = new FileReader();
+
+            reader.onload = (e) => {
+                let item = document.createElement("li");
+                let string = `
+                <div class="component">
+                    <svg viewbox="0 0 ` + data_json[i].image.width + " " + data_json[i].image.height + `">
+                        <image xlink:href="` + e.target.result + `" loading="lazy" />`
+
+                let rect = data_json[i].rect.rect
+
+                for (let j = 0; j < rect.length; j++) {
+                    //import_type(rect[j][1], rect[j][2], rect[j][3], rect[j][4], images_array[i].width, images_array[i].height)
+                    let default_format = import_type(rect[j][1], rect[j][2], rect[j][3], rect[j][4], data_json[i].image.width, data_json[i].image.height)
+                    string += `<rect
+                        vector-effect="non-scaling-stroke"
+                        stroke-alignment="inner"
+                        x="`+ default_format[0] + `"
+                        y="`+ default_format[1] + `"
+                        width="`+ (default_format[2] - default_format[0]) + `"
+                        height="`+ (default_format[3] - default_format[1]) + `"
+                        category="/m/015p6"
+                        id="img3_box0"
+                        fill="none"
+                        stroke-width="1.5pt"
+                        stroke="#FFFF00"
+                        visibility="visible"
+                        ></rect>`
+
+                    rect[j][1] = default_format[0]
+                    rect[j][2] = default_format[1]
+                    rect[j][3] = default_format[2]
+                    rect[j][4] = default_format[3]
+                }
+                string += `</svg></div>`
+                item.innerHTML = string
+
+                output.appendChild(item);
+                reader = undefined;
+            }
+
+            reader.readAsDataURL(data_json[i].image.file)
+
+        }
+    }
+
+    const cut_arr = (arr, index) => {
+        let tmp = []
+        for (let i = index; i < arr.length; i++)
+            tmp.push(arr[i]);
+
+        return tmp;
+    }
+
+    const find_data_json_by_name = (name) => {
+        for (let i = 0; i < data_json.length; i++)
+            if (data_json[i].name == name)
+                return data_json[i];
+    }
+
+    const replace_data_json_by_name = (name, obj) => {
+        for (let i = 0; i < data_json.length; i++)
+            if (data_json[i].name == name)
+                data_json[i] = obj
+    }
+
+
+    const getInsect = () => {
+        let req = new XMLHttpRequest()
+        req.open('get', '/get_all_insect', false)
+        req.send(null)
+        all_insect = JSON.parse(req.responseText);
+
+        $("#Insect").html(display_insect())
+    }
+
+    const display_insect = () => {
+        let str = ""
+        for (let i = 0; i < all_insect.length; i++) {
+            //console.log(current_insect[i])
+
+            str += `<option value=` + all_insect[i].fields.slug + `>` + all_insect[i].pk + `</option>`
+        }
+        return str;
+    }
+
+    getInsect();
+
+    const fetch_str = async (url, name) => {
+        let storedText
+        await fetch(url)
+            .then((response) => {
+                response.text().then((text) => {
+                    storedText = text;
+                    rects_array_generation(storedText, name)
+                })
+            })
+    }
+
+    const rects_array_generation = (storedText, name) => {
+        console.log("==============================================");
+        storedText = storedText.split("\n");
+        let rect = []
+
+        for (let i = 0; i < storedText.length; i++) {
+            newText = storedText[i].split(" ");
+            if (newText.length > 2)
+                rect.push(newText)
+        }
+        rects.push({ name: name, rect: rect })
+    }
+
+    const get_rect_by_name = (name) => {
+        rect = []
+
+        for (let o = 0; o < rects.length; o++) {
+            if (rects[o].name == name)
+                return rects[o].rect;
+        }
+        return rect;
+    }
+
+    let getImageFromFilesInput = (files, name) => {
+        for (let i = 0; i < files.length; i++) {
+            if (files[i].name.search(name) != -1)
+                return files[i]
+        }
+        return null;
+    }
+
+    const import_type = (x, y, w, h, w_i, h_i) => {
+        let type = $("#import_type").val()
+        switch (type) {
+            case 'pascal_voc':
+                return [x, y, w, h]
+                break;
+            case 'yolo':
+                return YoloToPaslcalVOC(x, y, w, h, w_i, h_i)
+        }
+    }
+
+    const create_html_element = () => {
+        let output = document.getElementById("listing")
+        output.innerHTML = ""
+        for (let i = 0; i < images_array.length; i++) {
+
+            let item = document.createElement("li");
+            // item.innerHTML = `<img src="` + url + `" alt="">`
+            let rect = get_rect_by_name(images_array[i].name)
+
+            let string = `
+            <div class="component">
+                <svg viewbox="0 0 ` + images_array[i].width + " " + images_array[i].height + `">
+                    <image xlink:href="` + images_array[i].url + `" loading="lazy" />`
+            for (let j = 0; j < rect.length; j++) {
+                //import_type(rect[j][1], rect[j][2], rect[j][3], rect[j][4], images_array[i].width, images_array[i].height)
+                let default_format = import_type(rect[j][1], rect[j][2], rect[j][3], rect[j][4], images_array[i].width, images_array[i].height)
+                string += `<rect
+                    vector-effect="non-scaling-stroke"
+                    stroke-alignment="inner"
+                    x="`+ default_format[0] + `"
+                    y="`+ default_format[1] + `"
+                    width="`+ (default_format[2] - default_format[0]) + `"
+                    height="`+ (default_format[3] - default_format[1]) + `"
+                    category="/m/015p6"
+                    id="img3_box0"
+                    fill="none"
+                    stroke-width="1.5pt"
+                    stroke="#FFFF00"
+                    visibility="visible"
+                    ></rect>`
+
+                rect[j][1] = default_format[0]
+                rect[j][2] = default_format[1]
+                rect[j][3] = default_format[2]
+                rect[j][4] = default_format[3]
+            }
+
+            string += `</svg></div>`
+            item.innerHTML = string
+
+            output.appendChild(item);
+        }
+        $('#btn_upload').prop('disabled', false)
+    }
+
+    let current_obj = {}
+
+    const selectOnchange = () => {
+        if ($("#import_type").val() == "null") {
+            event.preventDefault();
+            $('#filepicker').prop('disabled', true)
+            $('#btn_upload').prop('disabled', true)
+            $('#filepicker2').prop('disabled', true)
+            alert("Chọn kiểu import trước")
+        }
+        else {
+            $('#filepicker').prop('disabled', false)
+        }
+    }
+
+    let images = [], labels = [], images_array = []
+
+
+
+
+    const changeButtonStatus = () => {
+
+        $('#filepicker2').prop('disabled', false)
+    }
+
+    const YoloToPaslcalVOC = (x_center, y_center, w, h, w_i, h_i) => {
+        // x_center = ((x_max + x_min)/2)/w_i;
+        // y_center = ((y_max + y_min)/2)/h_i;
+
+        // w = w_o / w_i;
+        // h = h_o / h_i
+
+        let w_o = w * w_i;
+        //369
+        let h_o = h * h_i;
+        //320
+        let x = (((x_center * w_i) * 2) - w_o) / 2;
+        //95
+        let y = (((y_center * h_i) * 2) - h_o) / 2;
+        //177
+        return [x, y, w_o + x, h_o + y]
+
+    }
+
+
+
+</script>
+{% endblock %}

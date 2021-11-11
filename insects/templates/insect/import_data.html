@@ -1,0 +1,307 @@
+{% extends 'base_layout.html' %}
+
+{% block link %}
+{% load static %}
+    <link rel="stylesheet" href="{% static 'import_data.css' %}">
+{% endblock %}
+{% block title %}Import Data{% endblock %}
+
+{% block content %}
+
+  
+<form action="" id="form" method="post" enctype="multipart/form-data">
+    <div class="form-title">
+        <h2>Import Images</h2>
+    </div>
+    {% csrf_token %}
+    
+    <label for="import_type">Import as</label>
+    <select name="import_type" id="import_type" onchange="selectOnchange()">
+        <option value="yolo">Yolo</option>
+        <option value="pascal_voc">Pascal VOC</option>
+    </select>
+    <br>
+    <label for="subset">Subset</label>
+    <select name="subset" id="subset" onchange="selectOnchange()">
+        <option value="train">Train</option>
+        <option value="validate">Validate</option>
+        <option value="test">Test</option>
+    </select>
+    <br>
+    <label for="Insect">Chọn côn trùng</label>
+    <select name="Insect" id="Insect">
+
+    </select>
+    <label for="filepicker">Pick images</label>
+    <input type="file" id="filepicker" name="fileList" accept="image/*" files multiple />
+    <label for="filepicker2">Pick label</label>
+    <input type="file" id="filepicker2" disabled name="fileList" accept=".txt" files multiple />
+    
+    <input disabled id="btn_upload" type="button" value="Upload" onclick="sendDataToServer()">
+</form>
+<ul id="listing">
+</ul>
+
+
+{% endblock %}
+{% block script %}
+<script>
+
+    let disable = true;
+    let imgCount = 0;
+    let labelCount = 0;
+    let currentInsect = []
+    let index_img = 0;
+
+    const getInsect = () => {
+        let req = new XMLHttpRequest()
+        req.open('get', '/get_all_insect', false)
+        req.send(null)
+        all_insect = JSON.parse(req.responseText);
+        $("#Insect").html(display_insect())
+    }
+
+    const display_insect = () => {
+        let str = ""
+        for(let i = 0; i < all_insect.length; i++) {
+            //console.log(current_insect[i])
+            
+            str += `<option value=`+ all_insect[i].fields.slug +`>` + all_insect[i].pk + `</option>`
+        }
+        return str;
+    }
+
+    getInsect();
+
+    const fetch_str = async (url, name) => {
+        let storedText
+        await fetch(url)
+            .then((response) => {
+                response.text().then((text) => {
+                    storedText = text;
+                    rects_array_generation(storedText, name)
+                })
+            })
+    }
+
+    const rects_array_generation = (storedText, name) => {
+        console.log("==============================================");
+        storedText = storedText.split("\n");
+        let rect = []
+        
+        for (let i = 0; i < storedText.length; i ++) {
+            newText = storedText[i].split(" ");
+            if (newText.length > 2)
+                rect.push(newText)
+        }
+        rects.push({name: name, rect: rect})
+    }
+
+    const get_rect_by_name = (name) => {
+        rect = []
+
+        for(let o = 0; o < rects.length; o++) {
+            if (rects[o].name == name)
+                return rects[o].rect;
+        }
+        return rect
+    }
+
+    let getImageFromFilesInput = (files, name) => {
+        for (let i = 0; i < files.length; i++) {
+            if (files[i].name.search(name) != -1)
+                return files[i]
+        }
+        return null;
+    }
+
+    const import_type = (x, y, w, h, w_i, h_i) => {
+        let type = $("#import_type").val()
+        switch(type) {
+            case 'pascal_voc':
+                return [x, y, w, h]
+                break;
+            case 'yolo':
+                return YoloToPaslcalVOC(x, y, w, h, w_i, h_i)
+        }
+    }
+
+    const create_html_element = () => {
+        let output = document.getElementById("listing")
+        output.innerHTML = ""
+        for(let i = 0; i < images_array.length; i++) {
+            
+            let item = document.createElement("li");
+            // item.innerHTML = `<img src="` + url + `" alt="">`
+            let rect = get_rect_by_name(images_array[i].name)
+            
+            let string = `
+            <div class="component">
+                <svg viewbox="0 0 ` + images_array[i].width + " " + images_array[i].height + `">
+                    <image xlink:href="` + images_array[i].url + `" loading="lazy" />`
+            for(let j = 0; j < rect.length; j++)
+            {
+                //import_type(rect[j][1], rect[j][2], rect[j][3], rect[j][4], images_array[i].width, images_array[i].height)
+                let default_format = import_type(rect[j][1], rect[j][2], rect[j][3], rect[j][4], images_array[i].width, images_array[i].height)
+                string +=`<rect
+                    vector-effect="non-scaling-stroke"
+                    stroke-alignment="inner"
+                    x="`+ default_format[0] +`"
+                    y="`+ default_format[1] +`"
+                    width="`+ (default_format[2] - default_format[0]) +`"
+                    height="`+ (default_format[3] - default_format[1]) +`"
+                    category="/m/015p6"
+                    id="img3_box0"
+                    fill="none"
+                    stroke-width="1.5pt"
+                    stroke="#FFFF00"
+                    visibility="visible"
+                    ></rect>`
+
+                    rect[j][1] = default_format[0]
+                    rect[j][2] = default_format[1]
+                    rect[j][3] = default_format[2]
+                    rect[j][4] = default_format[3]
+            }
+            
+            string += `</svg></div>`
+            item.innerHTML = string
+            
+            output.appendChild(item);
+        }
+        $('#btn_upload').prop('disabled', false)
+    }
+
+    let current_obj = {}
+
+    const selectOnchange = () => {
+        if ($("#import_type").val() == "null") {
+            event.preventDefault();
+            $('#filepicker').prop('disabled', true)
+            $('#btn_upload').prop('disabled', true)
+            $('#filepicker2').prop('disabled', true)
+            alert("Chọn kiểu import trước")
+        }
+        else {
+            $('#filepicker').prop('disabled', false)
+        }
+    }
+
+    let images = [], labels = [], images_array = [], rects = []
+    document.getElementById("filepicker").addEventListener("change", function(event) {
+        images_array = []
+        let files = document.getElementById("filepicker").files
+        imgCount = files.length;
+        if (imgCount > 500)
+        {
+            
+        }
+        let output = document.getElementById("listing")
+        images = files
+        
+        for(let i = 0; i < files.length; i++) {
+            
+            let blob = new Blob([files[i]], {type: "image/png"}),
+            name = images[i].name.split('.').slice(0, -1).join('.')
+            url = URL.createObjectURL(blob),
+            img = new Image()
+            img.src = url
+            img.name = images[i].name.split('.').slice(0, -1).join('.')
+            img.onload = function() {
+                images_array.push({width:this.width, height: this.height, url: this.src, name: this.name})
+                delete blob;
+                delete image;
+            }
+
+            console.log(i);
+        }
+        changeButtonStatus();
+    });
+
+    document.getElementById("filepicker2").addEventListener("change", async function(event) {
+        rects = []
+        let files = document.getElementById("filepicker2").files
+        let img_files = document.getElementById("filepicker").files
+        let output = document.getElementById("listing")
+        labelCount = files.length;
+        labels = files
+        for (let i = 0; i < files.length; i++) {
+            var blob = new Blob([files[i]], {type: "text"}),
+                url = URL.createObjectURL(blob),
+                img = new Image()
+            img.src = url
+            await fetch_str(url, files[i].name.split('.').slice(0, -1).join('.'))
+        }
+        
+        let create_html = setInterval(() => {
+            console.log('interval');
+            if (images_array.length == imgCount && rects.length == labelCount)
+            {
+                create_html_element();
+                clearInterval(create_html);
+                console.log('clear interval');
+            }
+        }, 1000)
+
+    });
+
+    const changeButtonStatus = () => {        
+        
+        $('#filepicker2').prop('disabled', false)
+    }
+
+    const YoloToPaslcalVOC = (x_center, y_center, w, h, w_i, h_i) => {
+        // x_center = ((x_max + x_min)/2)/w_i;
+        // y_center = ((y_max + y_min)/2)/h_i;
+        
+        // w = w_o / w_i;
+        // h = h_o / h_i
+        
+        let w_o = w * w_i;
+        let h_o = h * h_i;
+        let x = (((x_center * w_i) *2) - w_o)/2;
+        let y = (((y_center * h_i) *2) - h_o)/2;
+
+        return [x, y, w_o + x, h_o + y]
+
+    }
+
+    const sendDataToServer = () => {
+        let files = document.getElementById("filepicker").files
+        try {
+            for (let i = 0; i < images.length; i++) {
+                if (images[i].name.split('.').slice(0, -1).join('.') == labels[i].name.split('.').slice(0, -1).join('.')) {
+                    console.log(true)
+                } else {
+                    alert('false')
+                    return
+                }
+            }
+        } catch(err) {
+            alert('false')
+            return
+        }
+
+        for (let i = 0; i < imgCount; i++) {
+            let fD = new FormData();
+            fD.append('image', getImageFromFilesInput(files, images_array[i].name))
+            fD.append('rects', get_rect_by_name(images_array[i].name))
+            fD.append('insect', $('#Insect').val())
+            fD.append('subset', $('#subset').val())
+            fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+            $.ajax({
+                url: '',
+                type: 'POST',
+                data: fD,
+                cache: false,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    $("#content").html(data);
+                }
+            });
+        }
+    }
+
+</script>
+{% endblock %}

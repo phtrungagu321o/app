@@ -1,0 +1,51 @@
+{% extends 'base_layout.html' %}
+{% block link %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'import_excel.css' %}">
+{% endblock %}
+
+{% block title %}
+
+Import data - Excel
+
+{% endblock %}
+
+{% block content %}
+
+
+    {% csrf_token %}
+    <input type="file" name="input_excel" id="id_excel">
+    <input type="button" value="Submit" onclick="sendExcel()">
+    <br/>
+    <h3>Kết quả</h3>
+    <div class="result" id="result">
+
+    </div>
+{% endblock %}
+
+{% block script %}
+
+<script>
+
+    const sendExcel = () => {
+        let fD = new FormData();    
+        document.getElementById("result").innerHTML = ""
+        fD.append('input_excel', document.getElementById("id_excel").files[0])
+        fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+        $.ajax({
+            url: '/import-excel/',
+            type: 'POST',
+            data: fD,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                console.log(data)
+                document.getElementById("result").innerHTML = data  
+            }
+        });
+    }
+
+</script>
+
+{% endblock %}

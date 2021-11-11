@@ -1,0 +1,64 @@
+{% extends 'base_layout.html' %}
+{% block link %}
+<style>
+    .site-form input {
+        display: block;
+        margin: 5px 5px 5px 5px;
+    }
+
+    .site-form label {
+        font-weight: bold;
+        padding: 10px 10px 10px 10px;
+    }
+
+    .site-form input label {
+        margin: 15px 15px 15px 15px;
+        text-align: left;
+    }
+
+    .site-form {
+        margin: auto;
+        border-radius: 5px;
+        width: 400px;
+        align-self: center;
+        background-color: snow;
+        
+    }
+
+    .site-form input {
+        width: 80%;
+        margin: auto !important;
+        border-radius: 7px;
+    }
+
+    .site-form input[type='submit'] {
+        width: 40%;
+    }
+
+    .form {
+        margin-top: 100px;
+        text-align: center;
+        
+    }
+
+    .site-form span {
+        text-align: left;
+        font-size: 10pt;
+        display: none;
+        margin-left: 20px;
+    }
+</style> 
+{% endblock %}
+{% block title %} Register {% endblock %}
+
+{% block content %}
+
+<div class="form">
+    <form action="" method="post" class='site-form'>
+        {% csrf_token %}
+        {{ UserCreationForm }}
+        {{ form }}
+        <input type="submit" value="Register">
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,394 @@
+{% extends 'base_layout.html' %}
+
+{% block link %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'draw_bbox.css' %}">
+{% endblock %}
+{% block title %}Import Data{% endblock %}
+
+{% block content %}
+
+<div class="main">
+    <div class="insect">
+
+        {% csrf_token %}
+        <label for="insect">Chọn côn trùng</label>
+        <select onchange="optionOnChange()" name="insect" id="insect">
+            <option value="-1">Chọn côn trùng</option>
+            {% for insect in insects %}
+            <option value="{{ insect.slug }}">{{ insect.eName }}</option>
+            {% endfor %}
+        </select>
+        <input type="button" value="Vẽ boudingbox tự động" onclick="autoBBox()">
+    </div>
+    <div class="left">
+        <img width="750" height="500" id="screenshot" draggable="false">
+        <svg width="750" height="500" viewBox="0 0 750 500" id="draw" xmlns="http://www.w3.org/2000/svg">
+            <rect id="marquee" x="450" y="420" width="150" height="150" />
+            <g id="boxes"></g>
+        </svg>
+    </div>
+    <div id="list"></div>
+</div>
+<div class="control">
+    <input type="button" id="pre" onclick="pre()" value="pre">
+    <input type="button" id="save" onclick="save()" value="validate">
+    <input type="button" id="next" onclick="next()" value="next">
+</div>
+
+{% endblock %}
+
+{% block script %}
+
+<script>
+    const doom = document.querySelector.bind(document);
+
+    /**
+     * Collection of rectangles defining user generated regions
+     */
+    let rectangles = [];
+    let yoloRects = [];
+    let selectedIndex = -1
+    let current_index = 0
+    let image = ""
+    let current_url = ""
+
+    // DOM elements
+    const $screenshot = doom('#screenshot');
+    const $draw = doom('#draw');
+    const $marquee = doom('#marquee');
+    const $boxes = doom('#boxes');
+
+    // Temp variables
+    let startX = 0;
+    let startY = 0;
+    const marqueeRect = {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+    };
+
+    const getImage = () => {
+        if (current_index < 0) {
+            $('#pre').prop('disabled', true)
+            current_index++
+            return false
+        }
+        let fD = new FormData();
+        fD.append('insect', document.getElementById("insect").value)
+        fD.append('index', current_index)
+        fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+        $.ajax({
+            url: '/get-new-img/',
+            type: 'POST',
+            data: fD,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                if (data == "result") {
+                    $('#next').prop('disabled', true)
+                    current_index--;
+                    return
+                }
+                data = JSON.parse(data)[0]
+                console.log(data)
+
+                $('#next').prop('disabled', false)
+
+                $('#pre').prop('disabled', false)
+                current_url = "/media/" + data.fields.image
+                document.getElementById("screenshot").setAttributeNS(null, "src", current_url)
+
+            }
+        });
+        return true
+
+    }
+
+    const addImageProcess = (data) => {
+        return new Promise((resolve, reject) => {
+            var img = new Image();
+
+            img.onload = function () {
+                let width = this.width
+                let height = this.height
+                console.log(width, height, "x")
+                for (let i = 0; i < data.length; i++) {
+                    let yolo = PascalVOCToYolo(data[i].fields.x, data[i].fields.y, data[i].fields.width, data[i].fields.height, width, height)
+                    pascal = YoloToPaslcalVOC(yolo.x_center, yolo.y_center, yolo.width, yolo.height, 750, 500)
+                    console.log(pascal, this.width, this.height)
+                    let obj = { x: pascal[0], y: pascal[1], width: pascal[2] - pascal[0], height: pascal[3] - pascal[1] }
+                    rectangles.push(obj)
+                    redraw()
+                }
+
+            }
+            console.log(current_url)
+            img.src = current_url
+        })
+    }
+
+    const getRect = () => {
+        let fD = new FormData();
+        fD.append('insect', document.getElementById("insect").value)
+        fD.append('index', current_index)
+        fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+        $.ajax({
+            url: '/get-new-img-rect/',
+            type: 'POST',
+            data: fD,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+
+                data = JSON.parse(data)
+                console.log(data)
+                let imgprocess = async () => {
+                    await addImageProcess(data)
+                }
+
+                imgprocess()
+
+            }
+        });
+    }
+
+    const optionOnChange = () => {
+        console.log("change")
+        rectangles = []
+        if (document.getElementById("insect").value != -1) {
+            current_index = 0
+            if (getImage()) {
+                getRect()
+                selectedIndex = -1
+                console.log(rectangles, "xxxx")
+            }
+        }
+    }
+
+    const next = () => {
+        current_index++;
+        if (getImage()) {
+            rectangles = []
+            getRect()
+        }
+        selectedIndex = -1
+        redraw()
+    }
+
+    const pre = () => {
+        current_index--;
+        if (getImage()) {
+            rectangles = []
+            getRect()
+        }
+        selectedIndex = -1
+        redraw()
+    }
+
+    const save = () => {
+        console.log(rectangles)
+        yoloRects = []
+        for (let i = 0; i < rectangles.length; i++) {
+            const { x, y, width, height } = rectangles[i];
+            yoloRects.push(PascalVOCToYolo(x, y, width + x, height + y, 750, 500))
+        }
+        console.log(yoloRects)
+        let fD = new FormData();
+        fD.append('insect', document.getElementById("insect").value)
+        fD.append('index', current_index)
+        fD.append('rects', JSON.stringify(yoloRects))
+        fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+        $.ajax({
+            url: '/save-rect-new-image/',
+            type: 'POST',
+            data: fD,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                console.log(data)
+                current_index--
+                next()
+
+            }
+        });
+    }
+
+    const autoBBox = () => {
+        let fD = new FormData();
+        fD.append('insect', document.getElementById("insect").value)
+        fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+        $.ajax({
+            url: '/auto-bbox/',
+            type: 'POST',
+            data: fD,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                console.log(data)
+                window.location.href = ""
+            }
+        });
+    }
+
+
+
+    $marquee.classList.add('hide');
+    $screenshot.addEventListener('pointerdown', startDrag);
+
+    function startDrag(ev) {
+        // middle button delete rect
+        if (selectedIndex != -1) {
+            rectangles.splice(selectedIndex, 1);
+            selectedIndex = -1
+            redraw();
+        }
+        if (ev.button === 1) {
+            const rect = hitTest(ev.layerX, ev.layerY);
+            if (rect) {
+                rectangles.splice(rectangles.indexOf(rect), 1);
+                redraw();
+            }
+            return;
+        }
+        window.addEventListener('pointerup', stopDrag);
+        $screenshot.addEventListener('pointermove', moveDrag);
+        $marquee.classList.remove('hide');
+        startX = ev.layerX;
+        startY = ev.layerY;
+        drawRect($marquee, startX, startY, 0, 0);
+    }
+
+    function stopDrag(ev) {
+        $marquee.classList.add('hide');
+        window.removeEventListener('pointerup', stopDrag);
+        $screenshot.removeEventListener('pointermove', moveDrag);
+        if (ev.target === $screenshot && marqueeRect.width && marqueeRect.height) {
+            rectangles.push(Object.assign({}, marqueeRect));
+            redraw();
+        }
+    }
+
+    function moveDrag(ev) {
+        let x = ev.layerX;
+        let y = ev.layerY;
+        let width = startX - x;
+        let height = startY - y;
+        if (width < 0) {
+            width *= -1;
+            x -= width;
+        }
+        if (height < 0) {
+            height *= -1;
+            y -= height;
+        }
+        Object.assign(marqueeRect, { x, y, width, height });
+        drawRect($marquee, marqueeRect);
+    }
+
+    function hitTest(x, y) {
+        return rectangles.find(rect => (
+            x >= rect.x &&
+            y >= rect.y &&
+            x <= rect.x + rect.width &&
+            y <= rect.y + rect.height
+        ));
+    }
+
+    const setSelect = (index) => {
+        if (document.getElementById("cb" + index).checked) {
+            selectedIndex = index
+            console.log('selected', index)
+            redraw()
+        }
+        else {
+            selectedIndex = -1
+            redraw()
+        }
+    }
+
+    const remove = () => {
+        rectangles.splice(selectedIndex, 1);
+        selectedIndex = -1
+        redraw()
+    }
+
+    function redraw() {
+        boxes.innerHTML = '';
+        document.getElementById("list").innerHTML = ""
+        let i = 0
+        console.log(rectangles)
+        rectangles.forEach((data) => {
+            const { x, y, width, height } = data;
+
+            let a = "<input id='cb" + i + "' type='checkbox'"
+            if (selectedIndex == i) {
+                boxes.appendChild(lastDrawRect(
+                    document.createElementNS("http://www.w3.org/2000/svg", 'rect'), data, -1
+                ));
+                document.getElementById("list").innerHTML += a + " checked onclick='setSelect(" + i + ")' ><b >x = " + x + ", y= " + y + ", width= " + width + ", height= " + height + "</b><br/>"
+            } else {
+                document.getElementById("list").innerHTML += a + " onclick='setSelect(" + i + ")' ><b id='" + i + "'>x = " + x + ", y= " + y + ", width= " + width + ", height= " + height + "</b><br/>"
+                boxes.appendChild(lastDrawRect(
+                    document.createElementNS("http://www.w3.org/2000/svg", 'rect'), data, i
+                ));
+            }
+            console.log(i)
+
+            i++
+        });
+        if (rectangles.length > 0)
+            document.getElementById("list").innerHTML += "<button id='btn' onclick='remove()'>Delete</button>"
+    }
+
+
+
+    function drawRect(rect, data) {
+        const { x, y, width, height } = data;
+        rect.setAttributeNS(null, 'width', width);
+        rect.setAttributeNS(null, 'height', height);
+        rect.setAttributeNS(null, 'x', x);
+        rect.setAttributeNS(null, 'y', y);
+        return rect;
+    }
+
+    const lastDrawRect = (rect, data, index) => {
+        const { x, y, width, height } = data;
+        console.log(PascalVOCToYolo(x, y, width + x, height + y, 750, 500))
+        if (index == -1)
+            rect.setAttributeNS(null, 'class', 'selected')
+        rect.setAttributeNS(null, 'id', index)
+        rect.setAttributeNS(null, 'width', width);
+        rect.setAttributeNS(null, 'height', height);
+        rect.setAttributeNS(null, 'x', x);
+        rect.setAttributeNS(null, 'y', y);
+        return rect;
+    }
+
+    const PascalVOCToYolo = (xmin, ymin, xmax, ymax, width, height) => {
+        return {
+            x_center: ((xmin + xmax) / 2) / width,
+            y_center: ((ymin + ymax) / 2) / height,
+            width: (xmax - xmin) / width,
+            height: (ymax - ymin) / height
+        }
+        //return [((xmin + xmax) / 2) / width, ((ymin + ymax) / 2) / height, width: (xmax - xmin) / width, height: (ymax - ymin) / height]
+    }
+
+    const YoloToPaslcalVOC = (x_center, y_center, w, h, w_i, h_i) => {
+
+        let w_o = w * w_i;
+        let h_o = h * h_i;
+        let x = (((x_center * w_i) * 2) - w_o) / 2;
+        let y = (((y_center * h_i) * 2) - h_o) / 2;
+        return [Math.round(x), Math.round(y), Math.round(w_o) + Math.round(x), Math.round(h_o) + Math.round(y)]
+
+    }
+</script>
+
+{% endblock %}

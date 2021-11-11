@@ -1,0 +1,58 @@
+{% extends 'base_layout.html' %}
+
+{% block link %}
+{% load static %}
+    <link rel="stylesheet" href="{% static 'search_tool.css' %}">
+    <script src="{% static 'js/search.js' %}"></script>
+    <script type="text/javascript" src="//www.shieldui.com/shared/components/latest/js/shieldui-all.min.js"></script>
+    <script type="text/javascript" src="//www.shieldui.com/shared/components/latest/js/jquery-1.10.2.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'all.min.css' %}" />
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="column2 border-right">
+        <div class="title">
+            <h1>Cây phân loài</h1>
+        </div>
+        
+        <div class="cl2_content">
+            <div class="tv">
+                <ul id="treeview">
+                </ul>
+            </div>
+        </div>
+        
+    </div>
+    <div class="column2">
+        <div class="title">
+            <h1>Tìm kiếm bằng ảnh</h1>
+        </div>
+        <div class="cl2_content">
+            <form action="">
+                {% csrf_token %}
+                <label for="filepicker">Pick images</label>
+                <input type="file" class="filepicker" id="filepicker" name="filepicker" accept="image/*" />
+                <br/>
+                <input type="button" onclick="sendData()" value="Search">
+            </form>
+            <div class="search_result">
+                <div class="title">
+                    <h1>Kết quả</h1>
+                </div>
+                <div id="search_result">
+                    
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+
+
+{% endblock %}

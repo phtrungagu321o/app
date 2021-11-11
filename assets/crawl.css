@@ -1,0 +1,95 @@
+
+.main_content form label {
+display: block;
+margin: 30px 30px 0px 30px;
+}
+
+.main_content form input {
+margin: 0px 30px 0px 30px !important;
+}
+
+.main_content form select {
+margin: 0px 30px 0px 30px;
+}
+
+.main_content .form-title {
+text-align: center;
+margin: auto;
+border-bottom: thin solid rebeccapurple;
+}
+
+.main_content form {
+margin: auto;
+width: 30%;
+margin-top: 50px;
+padding-bottom: 15px;
+padding-top: 15px;
+border-radius: 5px;
+background-color: white;
+border: thin solid whitesmoke;
+box-shadow: 2px 2px 10px rebeccapurple;
+}
+
+.result {
+display: -ms-flexbox; /* IE10 */
+display: flex;
+-ms-flex-wrap: wrap; /* IE10 */
+flex-wrap: wrap;
+}
+
+.result h1 {
+text-align: center;
+}
+
+.frame { 
+    position: relative;
+    vertical-align: middle;
+    margin: 5px;
+    -ms-flex: 30%; /* IE 10 */
+    flex: 30%;
+    max-width: 30%;
+    padding: 0px;
+    height: fit-content;
+    border: thin solid red;
+    text-align: center;
+}
+
+.frame-success { 
+    position: relative;
+    vertical-align: middle;
+    margin: 5px;
+    -ms-flex: 15%; /* IE 10 */
+    flex: 15%;
+    
+    max-width: 15%;
+    height: fit-content;
+    padding: 0px;
+    border: thin solid green;
+    text-align: center;
+}
+
+.frame input {
+    left: 0px !important;
+}
+
+.frame img {
+    vertical-align: middle;
+    width: 46%;
+    margin: 1%;
+}
+
+.frame-success img {
+    vertical-align: middle;
+    width: 98%;
+    margin: 1%;
+}
+
+.checkbox-result {
+    text-align: left;
+    
+}
+
+.component {
+    vertical-align: middle;
+    height: auto;
+}

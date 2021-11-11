@@ -1,0 +1,261 @@
+{% extends 'base_layout.html' %}
+
+{% block link %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'import_new.css' %}">
+{% endblock %}
+{% block title %}Import Data{% endblock %}
+
+{% block content %}
+
+
+<form action="" id="form" method="post" enctype="multipart/form-data">
+    <div class="form-title">
+        <h2>Import Images</h2>
+    </div>
+    {% csrf_token %}
+    <br>
+    <label for="Insect">Chọn côn trùng</label>
+    <select name="Insect" id="Insect">
+
+    </select>
+    <label for="filepicker">Pick images</label>
+    <input type="file" id="filepicker" name="fileList" accept="image/*" files multiple />
+    <label for=""></label>
+    <input id="btn_upload" type="button" value="Kiểm tra" onclick="Check_Images_Exist()">
+    <input id="btn_upload" class="btn_upload" type="button" value="Tải lên" onclick="UploadNewImage()" disabled>
+
+</form>
+<br>
+<div class="result" id="res">
+    <!-- 
+    <div id="upload_img">
+        <h1>Hình ảnh tải lên</h1>
+        <div sid="upload">
+
+        </div>
+    </div>
+    <br>
+
+    <div id="resultimg">
+        <h1>Kết quả</h1>
+        <div id="result">
+        </div>
+    </div> -->
+</div>
+
+
+{% endblock %}
+{% block script %}
+
+<script>
+    const getInsect = () => {
+        let req = new XMLHttpRequest()
+        req.open('get', '/get_all_insect', false)
+        req.send(null)
+        all_insect = JSON.parse(req.responseText);
+        console.log(all_insect)
+        $("#Insect").html(display_insect())
+    }
+
+    const display_insect = () => {
+        let str = ""
+        for (let i = 0; i < all_insect.length; i++) {
+            //console.log(current_insect[i])
+
+            str += `<option value=` + all_insect[i].fields.slug + `>` + all_insect[i].pk + `</option>`
+        }
+        return str;
+    }
+
+    getInsect();
+
+    let ids = []
+
+    const Display_uploaded_images = (index, status = true, src = "", score = 0) => {
+        let imgs = document.getElementById("filepicker").files[index]
+
+        let reader = new FileReader();
+
+        if (status) {
+            reader.onload = (e) => {
+
+                let frame_success = document.createElement("div")
+                frame_success.className = "frame-success"
+
+                let img = document.createElement("img");
+                let div = document.createElement("div");
+                let input = document.createElement("input");
+                input.type = "checkbox"
+                input.onclick = () => {
+                    console.log(reader.id)
+                    if (document.getElementById(reader.id).checked) {
+                        ids.push(reader.id);
+                    } else {
+                        let index = ids.indexOf(reader.id)
+                        if (index > -1) {
+                            ids.splice(index, 1)
+                        }
+                    }
+                    if (ids.length > 0) {
+                        $(".btn_upload").prop("disabled", false)
+                    } else {
+                        $(".btn_upload").prop("disabled", true)
+                    }
+                }
+                input.id = reader.id
+                div.className = "checkbox-result"
+                div.appendChild(input)
+                img.src = e.target.result
+                frame_success.appendChild(img)
+                frame_success.appendChild(div)
+                document.getElementById("res").appendChild(frame_success)
+            }
+        } else {
+            reader.onload = (e) => {
+                let frame = document.createElement("div")
+                frame.className = "frame"
+
+                let img1 = document.createElement("img")
+                img1.src = e.target.result
+
+                let img2 = document.createElement("img")
+                img2.src = src
+
+                let output = document.createElement("div")
+                output.className = "output"
+                output.innerHTML = (score * 100) + " %"
+
+                let checkbox_res = document.createElement("div")
+                checkbox_res.className = "checkbox-result"
+
+                let input = document.createElement("input")
+                input.type = "checkbox"
+                input.id = reader.id
+                input.onclick = () => {
+
+                    console.log(reader.id)
+                    if (document.getElementById(reader.id).checked) {
+                        ids.push(reader.id);
+                    } else {
+                        let index = ids.indexOf(reader.id)
+                        if (index > -1) {
+                            ids.splice(index, 1)
+                        }
+                    }
+                    if (ids.length > 0) {
+                        $(".btn_upload").prop("disabled", false)
+                    } else {
+                        $(".btn_upload").prop("disabled", true)
+                    }
+                }
+
+
+
+                frame.appendChild(img1)
+                frame.appendChild(img2)
+                frame.appendChild(output)
+                checkbox_res.appendChild(input)
+                frame.appendChild(checkbox_res)
+                document.getElementById("res").appendChild(frame)
+            }
+        }
+
+        reader.id = index
+        reader.readAsDataURL(imgs);
+    }
+
+    let count = 0;
+    let img_checked = false;
+    const Check_Images_Exist = () => {
+        let imgs = document.getElementById("filepicker").files
+        flag = 0;
+        for (let i = 0; i < imgs.length; i++) {
+            let fD = new FormData();
+            $('#btn_upload').prop('disabled', true)
+            fD.append('image', imgs[i])
+            fD.append('insect', $('#Insect').val())
+            fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+
+
+
+
+            $.ajax({
+                url: '/import-new/',
+                type: 'POST',
+                data: fD,
+                cache: false,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    console.log(data)
+                    let result = JSON.parse(data)
+                    let str = ''
+                    count++;
+                    if (result.file.length == 0) {
+                        Display_uploaded_images(i);
+                        return
+                    }
+
+                    flag = 1;
+                    let resimg = []
+                    for (let j = 0; j < result.file.length; j++)
+                        Display_uploaded_images(i, false, result.file[j], result.score[j])
+
+                }
+            });
+        }
+
+        const check = setInterval(() => {
+            console.log("checking...", count);
+            if (count == imgs.length) {
+                img_checked = true
+
+                clearInterval(check);
+            }
+        }, 3000);
+    }
+
+    const UploadNewImage = () => {
+        let images = document.getElementById("filepicker").files
+        if (img_checked) {
+            for (let i = 0; i < ids.length; i++) {
+                let fD = new FormData();
+                $('#btn_upload').prop('disabled', true)
+                fD.append('image', images[ids[i]])
+                fD.append('insect', $('#Insect').val())
+                fD.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value)
+                $.ajax({
+                    url: '/upload-new-img/',
+                    type: 'POST',
+                    data: fD,
+                    cache: false,
+                    processData: false,
+                    contentType: false,
+                    success: function (data) {
+                        console.log(data)
+
+                        // current_send_index++;
+                        // if (current_send_index < labelCount) {
+                        //     document.getElementById("processing").innerHTML = "Uploading... " + (current_send_index + 1) + "/" + flg
+
+                        //     sendData(current_send_index)
+                        // } else {
+                        //     alert("Them anh thanh cong");
+                        // }
+                    }
+                });
+            }
+        } else {
+            alert("Chua xong")
+        }
+    }
+
+    // const sendDataToServer = () => {
+    //     if (confirm())
+    // }
+
+
+</script>
+
+{% endblock %}

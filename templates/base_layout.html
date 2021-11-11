@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+  {% block link %}{% endblock %}
+  <title>{% block title %}{% endblock %}</title>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light nav_top">
+    <a class="navbar-brand" href="{% url 'insects:home' %}">CƠ SỞ DỮ LIỆU CÔN TRÙNG</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+      aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown"
+            aria-haspopup="true" aria-expanded="false">
+            Tùy chọn
+          </a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+            <input type="checkbox" id="detection" name="type1" checked="true" onclick="Detection()" />
+            <label for="type1">Detection</label>
+          </div>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href={% url 'insects:search_tool' %}> Tìm kiếm </a>
+        </li>
+        {% if user.is_authenticated %}
+        {% if user.is_staff %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'insects:import_data' %}"> Nhập ảnh </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'insects:import_new' %}"> Thêm ảnh mới </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'insects:craw_image' %}"> Cào ảnh </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'insects:draw_bbox' %}"> Gán nhãn </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/admin"> Trang quản trị </a>
+        </li>
+        {% else %}
+        {% endif %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'insects:logout' %}"> Đăng xuất </a>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'insects:login' %}"> Đăng nhập </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'insects:register' %}"> Đăng ký </a>
+        </li>
+        {% endif %}
+      </ul>
+      <form class="form-inline my-2 my-lg-0">
+        <span class="search_span"
+          style="max-height: 200px; position: relative; display: inline-block margin: 0px 0px 0px 0px;">
+          <input class="form-control mr-sm-2 search-text" type="text" placeholder="Search" aria-label="Search"
+            oninput="myFunction()" />
+          <div class="tt-menu">
+            <div class="tt-dataset tt-dataset-0" id="f_search_bar">
+
+            </div>
+          </div>
+        </span>
+      </form>
+    </div>
+  </nav>
+  <div class="main_content">
+    {% block content %}{% endblock%}
+  </div>
+</body>
+
+</html>
+<script>
+  var all_insect
+  var current_insect
+  const get_all_insect = () => {
+    let req = new XMLHttpRequest()
+    req.open('get', '/get_all_insect', false)
+    req.send(null)
+    all_insect = JSON.parse(req.responseText);
+  }
+
+  const display_insect_search_key = () => {
+    let str = ""
+    for (let i = 0; i < current_insect.length; i++) {
+      //console.log(current_insect[i])
+
+      str += `<div class="tt-suggestion tt-selectable" onmousedown="goTo('/detail/` + current_insect[i].fields.slug + `')">` + current_insect[i].pk + " - " + current_insect[i].fields.name + `</div>`
+    }
+    return str;
+  }
+
+
+
+  get_all_insect();
+
+  current_insect = all_insect;
+
+  $("#f_search_bar").html(display_insect_search_key())
+
+  const myFunction = () => {
+    string = $(".search-text").val();
+    string = string.toLowerCase();
+    result = [];
+    if (string == "") {
+      current_insect = all_insect;
+      $("#f_search_bar").html(display_insect_search_key())
+    }
+    for (i = 0; i < all_insect.length; i++) {
+      var text = all_insect[i].pk.toLowerCase();
+      var n = text.search(string);
+      if (n != -1) {
+        result.push(all_insect[i]);
+      }
+    }
+
+    current_insect = result
+    $("#f_search_bar").html(display_insect_search_key())
+  };
+
+  const goTo = (url) => {
+    window.location.href = url;
+  }
+
+  const Detection = () => {
+    let checked = document.getElementById('detection')
+    if (checked.checked) {
+
+      $(".rect").css("display", "block")
+      return
+    }
+    $('.rect').css("display", "none")
+  }
+</script>
+{% block script %}{% endblock %}
